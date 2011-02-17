@@ -32,13 +32,13 @@ The configuration file contains these mandatory entries :
 
 =over 2
 
-=item * LOGFILES is a regular expression matching every filename we want to scrutinize They have to be in the same directory for instance : postgresql-8.4-main-[0-9]{4}-[0-9]{2}.log"
-    
+=item * LOGFILES is a regular expression matching every filename we want to scrutinize. They have to be in the same directory for instance : postgresql-8.4-main-[0-9]{4}-[0-9]{2}.log"
+
 =item * LOGDIR is the directory where the LOGFILES are located, "/var/log/postgres"
 
 =item * REGEXFILE is a filename containing the rules to match for a line to be kept in the result, for instance "/etc/logsaw_filter". The rules are perl regular expressions, one per line.
 
-=item * OUTFILE is tho output file, for instance "/var/log/postgresql/tailnmailresult.log"
+=item * OUTFILE is the output file, for instance "/var/log/postgresql/logsaw_result.log"
 
 =back
 
