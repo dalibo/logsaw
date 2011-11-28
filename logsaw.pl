@@ -6,10 +6,6 @@ use Getopt::Long;
 use Data::Dumper;
 use Pod::Usage;
 
-#use IO::File;
-# Compression libs
-use IO::Zlib; # able to open uncompressed file as well (compression 0)
-
 #Digest md5
 use Digest::MD5 qw(md5_base64);
 
@@ -36,6 +32,14 @@ The configuration file contains these mandatory entries :
 =item * LOGDIR is the directory where the LOGFILES are located, "/var/log/postgres"
 
 =item * REGEXFILE is a filename containing the rules to match for a line to be kept in the result, for instance "/etc/logsaw_filter". The rules are perl regular expressions, one per line.
+
+=back
+
+The next parameter is optional :
+
+=over 2
+
+=item * PAGER give an arbitrary command to open and read log files if IO::Zlib is not available. For instance "zcat -f" or "gzip -dfc".
 
 =back
 
@@ -69,6 +73,35 @@ sub usage
 sub longusage
 {
     pod2usage(-verbose => 2, -exitval => 1);
+}
+
+# This function open the given file using the parameter PAGER or fallback on IO::Zlib.
+# The availability of IO::Zlib is checked right after the configuration file is loaded
+sub open_logfile
+{
+    my ($filepath)=@_;
+    my $fd;
+
+    if (defined $conf{'PAGER'}) {
+	open($fd, "$conf{'PAGER'} $filepath |")
+	    or die ("can not open file $filepath: «$!»\n");
+	return $fd;
+    }
+
+    return IO::Zlib->new($filepath, 'rb');
+}
+
+# This function close the given file descriptor depending on the PAGER parameter or fallback on the IO::Zlib method.
+# The availability of IO::Zlib is checked right after the configuration file is loaded
+sub close_logfile
+{
+    my ($filedesc)=@_;
+
+    if (defined $conf{'PAGER'}) {
+	return close($filedesc);
+    }
+
+    return $filedesc->close();
 }
 
 # This function determines the list of files to be scrutinized
@@ -119,7 +152,7 @@ sub build_file_list
 	my $filename=$reffile->[0];
 
 	#Are you the one ?
-	my $fh=IO::Zlib->new($filename, 'rb');
+	my $fh=open_logfile($filename, 'rb');
 
 	my @fileinfo=($filename);
 	my $line=<$fh>;
@@ -135,7 +168,7 @@ sub build_file_list
 		# the oldest file examined yet)
 		unshift @filestoread,\@fileinfo;
 		# and we have finished searching
-		$fh->close();
+		close_logfile($fh);
 		last; # We have finished processing : we know all the filestoread
 	    }
 	}
@@ -144,7 +177,7 @@ sub build_file_list
 	push @fileinfo,0;
 	unshift @filestoread,\@fileinfo;
 
-	$fh->close();
+	close_logfile($fh);
     }
     return \@filestoread;
 }
@@ -178,7 +211,7 @@ sub read_files
     {
 	my ($filename,$offset)=@{$reffile};
 
-	my $fh=IO::Zlib->new($filename, 'rb');
+	my $fh=open_logfile($filename, 'rb');
 	my ($sec,$min,$hour,$mday,$mon,$year) = localtime(time);
 	my $exectime = sprintf("%02d/%02d/%d %02d:%02d:%02d", $mday, $mon+1, $year+1900, $hour, $min, $sec);
 
@@ -233,6 +266,15 @@ while (<CONF>) {
     $conf{$key} = $value;
 }
 close CONF;
+
+if (not defined $conf{'PAGER'}) {
+    eval { require IO::Zlib };
+    if ( $@ ) {
+	die "Parameter PAGER is not set in your configuration file and I can not load module IO::Zlib.\n"
+	    ."Please, set the parameter PAGER in your configuration file "
+	    ."or make sure module IO::Zlib is installed on your system and available in your \@INC.\n"
+    }
+}
 
 # process log files
 my $reffile_list=list_dir();

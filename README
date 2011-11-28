@@ -23,6 +23,11 @@ Configuration file
       kept in the result, for instance "/etc/logsaw_filter". The rules are
       perl regular expressions, one per line.
 
+    The next parameter is optional :
+
+    * PAGER give an arbitrary command to open and read log files if IO::Zlib
+      is not available.
+
     The next parameters are updated everytime the program is run :
 
     * FILEID is the cheksum of the last seen file
