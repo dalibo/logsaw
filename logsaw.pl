@@ -1,4 +1,7 @@
 #!/usr/bin/perl -w
+#
+# This program is open source, licensed under the simplified BSD license. For license terms, see the LICENSE file.
+#
 
 use strict;
 
@@ -12,6 +15,8 @@ use Digest::MD5 qw(md5_base64);
 =head1 logsaw.pl
 
 logsaw.pl - retrieve and filter your logs
+
+Version 1.0
 
 =head1 SYNOPSIS
 
@@ -66,9 +71,13 @@ in the directory "/var/log/postgres" matching "postgresql\.log" (eg. postgresql.
   REGEX=ERROR
   REGEX=WARNING
 
-=head1 Author
+=head1 AUTHORS
 
   Dalibo's team. http://www.dalibo.org
+
+=head1 LICENSING
+
+This program is open source, licensed under the simplified BSD license. For license terms, see the LICENSE provided with the sources.
 
 =cut
 
