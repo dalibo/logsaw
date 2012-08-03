@@ -43,28 +43,21 @@ log files rotated and optionnaly compressed by logrotate or another similar meca
 
 =head1 CONFIGURATION
 
-The configuration file contains these mandatory entries :
+The configuration file can these entries :
 
 =over 2
 
-=item * LOGFILES is a regular expression matching every filename we want to scrutinize. They have to be in the same directory for instance : postgresql-8.4-main-[0-9]{4}-[0-9]{2}.log"
+=item * LOGFILES is a regular expression matching every filename we want to scrutinize. They have to be in the same directory for instance : postgresql-8.4-main-[0-9]{4}-[0-9]{2}.log". By default, match all files.
 
-=item * LOGDIR is the directory where the LOGFILES are located, "/var/log/postgres"
+=item * LOGDIR is the directory where the LOGFILES are located, eg. "/var/log/postgres". By default './'.
 
-=item * REGEX is a rule to match for a line to be kept in the result. The rules are perl regular expressions. The configuration file can
-have as many REGEX than rules needed.
-
-=back
-
-The next parameter is optional :
-
-=over 2
+=item * REGEX is a rule to match for a line to be kept in the result. The rules are perl regular expressions. The configuration file can have as many REGEX than rules needed. By default, match all line.
 
 =item * PAGER give an arbitrary command to open and read log files if IO::Zlib is not available. For instance "zcat -f" or "gzip -dfc".
 
 =back
 
-The next parameters are updated everytime the program is run :
+The next parameters set where to start processing log files on the next call of logsaw and are updated by itself. If not set, logsaw will parse all matching log files from the begining.
 
 =over 2
 
@@ -112,12 +105,14 @@ This program is open source, licensed under the simplified BSD license. For lice
 # global vars
 my $conffile;
 my $help;
-my %conf; # conf hash
+my %conf = ( # conf hash
+    'LOGFILES' => '',
+    'LOGDIR' => './',
+    'REGEX' => []
+);
 my $debug = 0;
 my $showfilename = 0;
 my $showlinenr = 0;
-
-$conf{REGEX} = [];
 
 sub usage
 {
@@ -187,6 +182,7 @@ sub list_dir
 
     # Now we've got an array containing file and mtime. We sort it descending, then return it to the caller
     my @sorted_filelist=sort{$b->[1] <=> $a->[1]}@filelist;
+
     return \@sorted_filelist;
 }
 
@@ -244,7 +240,7 @@ sub read_files
 
     my @regexes;
     # We want to cmopile the regular expressions only once
-    foreach my $str (@{ $conf{REGEX} })
+    foreach my $str (@{ $conf{'REGEX'} })
     {
 	chomp($str);
 	push @regexes,( qr/$str/);
@@ -323,13 +319,16 @@ while (<CONF>) {
     chomp;
     my ($key, $value) = split /=/;
     if ($key eq 'REGEX') {
-	push @{ $conf{REGEX} }, $value;
+	push @{ $conf{'REGEX'} }, $value;
     }
     else {
 	$conf{$key} = $value;
     }
 }
 close CONF;
+
+# default to "match all" if no given regex
+push @{ $conf{'REGEX'} } , '' if @{ $conf{'REGEX'} } == 0;
 
 if (not defined $conf{'PAGER'}) {
     eval { require IO::Zlib };
