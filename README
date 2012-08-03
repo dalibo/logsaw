@@ -18,25 +18,26 @@ OPTIONS
     -n, --line-number: show line number of the entrey in the logfile.
 
 CONFIGURATION
-    The configuration file contains these mandatory entries :
+    The configuration file can these entries :
 
     * LOGFILES is a regular expression matching every filename we want to
       scrutinize. They have to be in the same directory for instance :
-      postgresql-8.4-main-[0-9]{4}-[0-9]{2}.log"
+      postgresql-8.4-main-[0-9]{4}-[0-9]{2}.log". By default, match all
+      files.
 
-    * LOGDIR is the directory where the LOGFILES are located,
-      "/var/log/postgres"
+    * LOGDIR is the directory where the LOGFILES are located, eg.
+      "/var/log/postgres". By default './'.
 
     * REGEX is a rule to match for a line to be kept in the result. The
       rules are perl regular expressions. The configuration file can have as
-      many REGEX than rules needed.
-
-    The next parameter is optional :
+      many REGEX than rules needed. By default, match all line.
 
     * PAGER give an arbitrary command to open and read log files if IO::Zlib
       is not available. For instance "zcat -f" or "gzip -dfc".
 
-    The next parameters are updated everytime the program is run :
+    The next parameters set where to start processing log files on the next
+    call of logsaw and are updated by itself. If not set, logsaw will parse
+    all matching log files from the begining.
 
     * FILEID is the cheksum of the last seen file
 
