@@ -19,7 +19,7 @@ Version 1.0
 
 =head1 SYNOPSIS
 
-  logsaw.pl [-d|--debug] [-?|--help] [-H|--show-filename] [-n|--line-number] --conf path_to_config_file
+  logsaw.pl [-d|--debug] [-?|--help] [-H|--show-filename] [-n|--line-number] [--conf path_to_config_file]
 
 =head1 DESCRIPTION
 
@@ -38,6 +38,8 @@ compressed by logrotate or another similar mecanism.
 =item -H, --show-filename: show log filenames in the output.
 
 =item -n, --line-number: show line number of the entrey in the logfile.
+
+=item -f, --conf: configuration file. By default "$HOME/.logsaw".
 
 =back
 
@@ -125,6 +127,7 @@ my $showfilename = 0;
 my $showlinenr   = 0;
 
 sub usage {
+    print "$_[0]\n" if $_[0];
     pod2usage( -exitval => 1 );
 }
 
@@ -328,7 +331,13 @@ GetOptions(
 ) or usage();
 
 longusage() if ($help);
-usage() unless ($conffile);
+
+$conffile = "$ENV{HOME}/.logsaw" unless $conffile;
+
+usage(
+    "Couldn't find configuration file (looked for: $conffile)!\nUse --conf option or create ~/.logsaw"
+)
+    unless ($conffile and -f $conffile);
 
 # read configuration file
 open CONF, $conffile or die "Can't open $conffile : $!\n";
