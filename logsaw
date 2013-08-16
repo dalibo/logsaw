@@ -39,7 +39,7 @@ compressed by logrotate or another similar mecanism.
 
 =item -n, --line-number: show line number of the entrey in the logfile.
 
-=item -f, --conf: configuration file. By default "$HOME/.logsaw".
+=item -f, --conf: configuration file. By default LOGSAWRC environment variable, "$HOME/.logsaw" as fallback.
 
 =back
 
@@ -292,8 +292,8 @@ sub read_files {
         while ( $line = <$fh> ) {
             $linenr++;
 
-	    # This file is not empty, so we remember its md5 in case it's the
-	    # last we ever see
+            # This file is not empty, so we remember its md5 in case it's the
+            # last we ever see
             $cksumlastnonemptyfile = md5_base64($line) if ( $linenr == 1 );
             next if ( $linenr <= $offset );    # We're not there yet
                                                # Does the line match ?
@@ -332,10 +332,13 @@ GetOptions(
 
 longusage() if ($help);
 
-$conffile = "$ENV{HOME}/.logsaw" unless $conffile;
+$conffile = $ENV{LOGSAWRC}          if defined $ENV{LOGSAWRC};
+$conffile = "$ENV{HOME}/.logsaw"    unless $conffile;
 
 usage(
-    "Couldn't find configuration file (looked for: $conffile)!\nUse --conf option or create ~/.logsaw"
+    "Couldn't find configuration file (looked for: $conffile)!\n"
+    ."Use --conf option \n\tor create ~/.logsaw\n".
+    "\tor set LOGSAWRC environment variable with the corect path."
 )
     unless ($conffile and -f $conffile);
 
