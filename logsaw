@@ -35,9 +35,9 @@ compressed by logrotate or another similar mecanism.
 
 =item -?, --help: show this help page.
 
-=item -H, --show-filename: show log filenames in the output.
+=item -H, --show-filename: show log filenames in the output. Overwrites configuration entry SHOWFILENAME.
 
-=item -n, --line-number: show line number of the entrey in the logfile.
+=item -n, --line-number: show line number of the entrey in the logfile. Overwrites configuration entry SHOWLINENR.
 
 =item -f, --conf: configuration file. By default LOGSAWRC environment variable, "$HOME/.logsaw" as fallback.
 
@@ -62,6 +62,10 @@ than rules needed. By default, match all line.
 
 =item * PAGER give an arbitrary command to open and read log files if IO::Zlib
 is not available. For instance "zcat -f" or "gzip -dfc".
+
+=item * SHOWFILENAME if not 0, enable C<--show-filename>. By default 0, is overwrited by C<--show-filename>.
+
+=item * SHOWLINENR if not 0, enable C<--line-number>. By default 0, is overwrited by C<--line-number>.
 
 =back
 
@@ -120,11 +124,13 @@ my $help;
 my %conf = (    # conf hash
     'LOGFILES' => '',
     'LOGDIR'   => './',
-    'REGEX'    => []
+    'REGEX'    => [],
+    'SHOWFILENAME' => 0,
+    'SHOWLINENR' => 0
 );
 my $debug        = 0;
-my $showfilename = 0;
-my $showlinenr   = 0;
+my $showfilename = undef;
+my $showlinenr   = undef;
 
 sub usage {
     print "$_[0]\n" if $_[0];
@@ -355,6 +361,10 @@ while (<CONF>) {
     }
 }
 close CONF;
+
+# set show-filename and line-number from conf file if not defined
+$showfilename = $conf{'SHOWFILENAME'} unless defined $showfilename;
+$showlinenr   = $conf{'SHOWLINENR'}   unless defined $showlinenr;
 
 # default to "match all" if no given regex
 push @{ $conf{'REGEX'} }, '' if @{ $conf{'REGEX'} } == 0;
