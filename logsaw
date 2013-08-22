@@ -137,6 +137,7 @@ my %conf = (    # conf hash
 my $debug        = 0;
 my $showfilename = undef;
 my $showlinenr   = undef;
+my %soft_seek; # track opened files with a PAGER
 
 sub usage {
     print "$_[0]\n" if $_[0];
@@ -152,53 +153,50 @@ sub version {
     exit 0;
 }
 
-# This function open the given file using the parameter PAGER or fallback on
-# IO::Zlib. The availability of IO::Zlib is checked right after the
-# configuration file is loaded
+# This function open the given file using open(), optionnaly forking PAGER to
+# read it.
+# is loaded
 sub open_logfile {
     my ($filepath) = @_;
-    my $fh;
+    my $fh = undef;
 
-    if ( defined $conf{'PAGER'} ) {
+    return undef unless -f $filepath;
+
+    if ( -B $filepath and defined $conf{'PAGER'} ) {
+        # Only use the pager if the file looks like a binary one. This avoid
+        # to use the slow emulated seek()
         open( $fh, "$conf{'PAGER'} $filepath |" )
             or die("can not open file $filepath: «$!»\n");
+
+        $soft_seek{fileno $fh} = 1;
+
         return $fh;
     }
 
-    # We don't want IO::Uncompress to deal with flat files, so set
-    # "Transparent" to 0.
-    $fh = new IO::Uncompress::AnyUncompress $filepath, { Transparent => 0 };
+    open $fh, '<', $filepath
+        or die("can not open file $filepath: «$!»\n");;
 
-    return $fh if defined $fh;
-
-    # This is supposed to be a raw file
-    # TODO: can we check that ?
-
-    open $fh, '<', $filepath;
+    $soft_seek{fileno $fh} = 0;
 
     return $fh;
 }
 
-# This function seek to the given position in the given file descriptor
-# depending on the PAGER parameter or fallback on the
-# IO::Uncompress::AnyUncompress method. The availability of
-# IO::Uncompress::AnyUncompress is checked right after the configuration file
-# is loaded
+# This function seek to the given position in the given file descriptor.
+# If the file descriptor is using PAGER, emulate seek.
 sub seek_logfile {
     my ( $filedesc, $seek ) = @_;
 
     print STDERR "start seeking to $seek..." if $debug;
 
     # implement seek with a PAGER...
-    if ( defined $conf{'PAGER'} ) {
+    if ( $soft_seek{fileno $filedesc} == 1 ) {
         my $buff   = 4096;
-        my $offset = $seek;
-        while ( $offset >= $buff ) {
+        while ( $seek >= $buff ) {
             read $filedesc, $_, $buff;
-            $offset -= $buff;
+            $seek -= $buff;
         }
 
-        read $filedesc, $_, $offset if $offset;
+        read $filedesc, $_, $seek if $seek;
     }
     else {
         seek $filedesc, $seek, SEEK_CUR;
@@ -252,13 +250,9 @@ sub list_dir {
 # FILEID should be read.
 sub build_file_list {
     my ($reffilelist) = @_;
-    my $offset        = $conf{OFFSET};
-    my $fileid        = $conf{FILEID};
+    my $offset        = $conf{OFFSET} || 0;
+    my $fileid        = $conf{FILEID} || '';
     my @filestoread;
-
-    # offset and fileid can be undef (new configuration file)
-    $offset or $offset = 0;
-    $fileid or $fileid = '';
 
     foreach my $reffile ( @{$reffilelist} ) {
         my $filename = $reffile->[0];
@@ -280,8 +274,8 @@ sub build_file_list {
             if ( $fileid eq $cksum ) {
                 print STDERR "This is the last file processed.\n" if $debug;
 
-                # We store the offset for the file
-                push @fileinfo, $offset;
+                # We store the offset for the file and if it is a binary file
+                push @fileinfo, $offset, -B $filename;
 
                 # This is the fileid. We put it at the beginning of the list
                 # (this is the oldest file examined yet)
@@ -296,8 +290,8 @@ sub build_file_list {
         }
 
         # It's not the file. We push it with an offset of zero (we'll read it
-        # entirely)
-        push @fileinfo, 0;
+        # entirely), and if it is a binary one.
+        push @fileinfo, 0, -B $filename;
         unshift @filestoread, \@fileinfo;
 
         close $fh;
@@ -441,16 +435,6 @@ $showlinenr   = $conf{'SHOWLINENR'}   unless defined $showlinenr;
 # default to "match all" if no given regex
 push @{ $conf{'REGEX'} }, '' if @{ $conf{'REGEX'} } == 0;
 
-if ( not defined $conf{'PAGER'} ) {
-    eval { require IO::Uncompress::AnyUncompress };
-    if ($@) {
-        die <<EOT
-Parameter PAGER is not set in your configuration file and I can not load module IO::Uncompress::AnyUncompress
-Please, set the parameter PAGER in your configuration file or make sure module IO::Uncompress::AnyUncompress is installed on your system and available in your \@INC.
-EOT
-    }
-}
-
 # process log files
 my $reffile_list   = list_dir();
 my $reffilestoread = build_file_list($reffile_list);
@@ -459,7 +443,14 @@ if ($debug) {
     print STDERR "Conf: " . Dumper( \%conf );
     print STDERR "File list: " . Dumper($reffile_list);
     print STDERR "File to process: " . Dumper($reffilestoread);
+}
 
+# check if we need a pager
+if ( not defined $conf{'PAGER'} and grep($_->[2], @{ $reffilestoread }) > 0 ) {
+        die <<EOT
+Parameter PAGER is not set in your configuration file and it seems some files to parse are binary ones.
+Please, set the parameter PAGER in your configuration file.
+EOT
 }
 
 my $reflastfileread = read_files($reffilestoread);
