@@ -4,21 +4,25 @@
 
 use strict;
 
+use vars qw($VERSION $PROGRAM);
 use Getopt::Long;
 use Data::Dumper;
 use Pod::Usage;
 use Fcntl qw(SEEK_CUR);
 use Digest::MD5 qw(md5_base64);
 
-=head1 logsaw.pl
+$VERSION = '2.0';
+$PROGRAM = 'logsaw';
 
-logsaw.pl - retrieve and filter your logs
+=head1 logsaw
 
-Version 1.0
+logsaw - retrieve and filter your logs
+
+Version 2.0
 
 =head1 SYNOPSIS
 
-  logsaw.pl [-d|--debug] [-?|--help] [-H|--show-filename] [-n|--line-number] [--conf path_to_config_file]
+  logsaw [-d|--debug] [-?|--help] [-H|--show-filename] [-n|--line-number] [--conf path_to_config_file]
 
 =head1 DESCRIPTION
 
@@ -122,6 +126,7 @@ license terms, see the LICENSE provided with the sources.
 # global vars
 my $conffile;
 my $help;
+my $version;
 my %conf = (    # conf hash
     'LOGFILES'     => '',
     'LOGDIR'       => './',
@@ -140,6 +145,11 @@ sub usage {
 
 sub longusage {
     pod2usage( -verbose => 2, -exitval => 1 );
+}
+
+sub version {
+    print "$PROGRAM version $VERSION.\n";
+    exit 0;
 }
 
 # This function open the given file using the parameter PAGER or fallback on
@@ -394,10 +404,13 @@ GetOptions(
     "debug|d"         => \$debug,
     "help|?"          => \$help,
     "show-filename|H" => \$showfilename,
-    "line-number|n"   => \$showlinenr
+    "line-number|n"   => \$showlinenr,
+    "version"         => \$version
 ) or usage();
 
 longusage() if ($help);
+
+version() if $version;
 
 $conffile = $ENV{LOGSAWRC} if defined $ENV{LOGSAWRC};
 $conffile = "$ENV{HOME}/.logsaw" unless $conffile;
