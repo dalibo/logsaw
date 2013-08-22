@@ -44,6 +44,10 @@ compressed by logrotate or another similar mecanism.
 
 =item -f, --conf: configuration file. By default LOGSAWRC environment variable, "$HOME/.logsaw" as fallback.
 
+=item --version: Show the version of logsaw and exit.
+
+=item --dry: Do not really run. It will not actually parse file and edit the configuration file.
+
 =back
 
 =head1 CONFIGURATION
@@ -135,6 +139,7 @@ my %conf = (    # conf hash
     'SHOWLINENR'   => 0
 );
 my $debug        = 0;
+my $dry          = 0;
 my $showfilename = undef;
 my $showlinenr   = undef;
 my %soft_seek; # track opened files with a PAGER
@@ -185,6 +190,8 @@ sub open_logfile {
 # If the file descriptor is using PAGER, emulate seek.
 sub seek_logfile {
     my ( $filedesc, $seek ) = @_;
+
+    return if $dry;
 
     print STDERR "start seeking to $seek..." if $debug;
 
@@ -356,7 +363,7 @@ sub read_files {
             $line   = <$fh>;
         }
 
-        while ($line) {
+        while (not $dry and $line) {
             $linenr++;
 
             # Does the line match ?
@@ -399,7 +406,8 @@ GetOptions(
     "help|?"          => \$help,
     "show-filename|H" => \$showfilename,
     "line-number|n"   => \$showlinenr,
-    "version"         => \$version
+    "version"         => \$version,
+    "dry"             => \$dry
 ) or usage();
 
 longusage() if ($help);
@@ -462,7 +470,7 @@ $conf{'OFFSET'} = $reflastfileread->[0];
 $conf{'FILEID'} = $reflastfileread->[1];
 $conf{'LINE'}   = $reflastfileread->[2];
 
-exit if $debug;
+exit if $dry;
 
 open CONF, ">$conffile" or die "Can't open $conffile : $!\n";
 foreach my $key ( sort keys %conf ) {
