@@ -11,7 +11,7 @@ use Pod::Usage;
 use Fcntl qw(SEEK_CUR);
 use Digest::MD5 qw(md5_base64);
 
-$VERSION = '2.0';
+$VERSION = '2.1';
 $PROGRAM = 'logsaw';
 
 =head1 logsaw
