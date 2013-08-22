@@ -123,11 +123,11 @@ license terms, see the LICENSE provided with the sources.
 my $conffile;
 my $help;
 my %conf = (    # conf hash
-    'LOGFILES' => '',
-    'LOGDIR'   => './',
-    'REGEX'    => [],
+    'LOGFILES'     => '',
+    'LOGDIR'       => './',
+    'REGEX'        => [],
     'SHOWFILENAME' => 0,
-    'SHOWLINENR' => 0
+    'SHOWLINENR'   => 0
 );
 my $debug        = 0;
 my $showfilename = undef;
@@ -155,9 +155,9 @@ sub open_logfile {
         return $fh;
     }
 
-    # We don't want IO::Uncompress to deal with flat files, so set "Transparent"
-    # to 0.
-    $fh = IO::Uncompress::AnyUncompress->new( $filepath, {Transparent => 0} );
+    # We don't want IO::Uncompress to deal with flat files, so set
+    # "Transparent" to 0.
+    $fh = new IO::Uncompress::AnyUncompress $filepath, { Transparent => 0 };
 
     return $fh if defined $fh;
 
@@ -175,15 +175,15 @@ sub open_logfile {
 # IO::Uncompress::AnyUncompress is checked right after the configuration file
 # is loaded
 sub seek_logfile {
-    my ($filedesc, $seek) = @_;
+    my ( $filedesc, $seek ) = @_;
 
     print STDERR "start seeking to $seek..." if $debug;
 
     # implement seek with a PAGER...
     if ( defined $conf{'PAGER'} ) {
-        my $buff = 4096;
+        my $buff   = 4096;
         my $offset = $seek;
-        while ($offset >= $buff) {
+        while ( $offset >= $buff ) {
             read $filedesc, $_, $buff;
             $offset -= $buff;
         }
@@ -231,7 +231,7 @@ sub list_dir {
     closedir($dh);
 
     # Now we've got an array containing file and mtime. We sort it descending,
-    # then return it to the caller 
+    # then return it to the caller
     my @sorted_filelist = sort { $b->[1] <=> $a->[1] } @filelist;
 
     return \@sorted_filelist;
@@ -241,9 +241,9 @@ sub list_dir {
 # the list of files to read : All files more recent than the one matching the
 # FILEID should be read.
 sub build_file_list {
-    my ( $reffilelist ) = @_;
-    my $offset = $conf{OFFSET};
-    my $fileid = $conf{FILEID}
+    my ($reffilelist) = @_;
+    my $offset        = $conf{OFFSET};
+    my $fileid        = $conf{FILEID};
     my @filestoread;
 
     # offset and fileid can be undef (new configuration file)
@@ -254,7 +254,7 @@ sub build_file_list {
         my $filename = $reffile->[0];
 
         # Are you the one ?
-        my $fh = open_logfile( $filename );
+        my $fh = open_logfile($filename);
 
         next unless defined $fh;
 
@@ -262,24 +262,26 @@ sub build_file_list {
         my $line     = <$fh>;
         if ($line)    # The file contains at least one line
         {
+
             # We need to check if this is the file
             my $cksum = md5_base64($line);
-            print STDERR "MD5 of the first line of $filename: $cksum\n" if $debug;
+            print STDERR "FILEID of $filename: $cksum\n" if $debug;
 
             if ( $fileid eq $cksum ) {
-                print STDERR "This is the file we are looking for.\n" if $debug;
+                print STDERR "This is the last file processed.\n" if $debug;
 
                 # We store the offset for the file
                 push @fileinfo, $offset;
 
-                # This is the fileid. We put it at the beginning of the list (this is
-                # the oldest file examined yet)
+                # This is the fileid. We put it at the beginning of the list
+                # (this is the oldest file examined yet)
                 unshift @filestoread, \@fileinfo;
 
                 # and we have finished searching
                 close $fh;
+
                 # We have finished processing : we know all the filestoread
-                last; 
+                last;
             }
         }
 
@@ -314,7 +316,7 @@ sub read_files {
         my ( $filename, $offset ) = @{$reffile};
         my $line;
         my $linenr = 0;
-        my $fh     = open_logfile( $filename );
+        my $fh     = open_logfile($filename);
         my ( $sec, $min, $hour, $mday, $mon, $year ) = localtime(time);
         my $exectime = sprintf(
             "%02d/%02d/%d %02d:%02d:%02d",
@@ -344,14 +346,15 @@ sub read_files {
         $cksumlastnonemptyfile = md5_base64($line);
 
         # seek to the appropriate offset
-        if ($offset > 0) {
+        if ( $offset > 0 ) {
             seek_logfile( $fh, $offset );
             $linenr = $conf{'LINE'};
-            $line = <$fh>;
+            $line   = <$fh>;
         }
 
-        while ( $line ) {
+        while ($line) {
             $linenr++;
+
             # Does the line match ?
             REGEXP: foreach my $regex (@regexes) {
                 if ( $line =~ $regex ) {
@@ -381,7 +384,8 @@ sub read_files {
 
     # This is it. We just have to close output file and
     # return the data about last file seen
-    return ( [ $lastfilesizereaded, $cksumlastnonemptyfile, $lastfilelinenr ] );
+    return (
+        [ $lastfilesizereaded, $cksumlastnonemptyfile, $lastfilelinenr ] );
 }
 
 # Get options from command line
@@ -395,15 +399,13 @@ GetOptions(
 
 longusage() if ($help);
 
-$conffile = $ENV{LOGSAWRC}          if defined $ENV{LOGSAWRC};
-$conffile = "$ENV{HOME}/.logsaw"    unless $conffile;
+$conffile = $ENV{LOGSAWRC} if defined $ENV{LOGSAWRC};
+$conffile = "$ENV{HOME}/.logsaw" unless $conffile;
 
-usage(
-    "Couldn't find configuration file (looked for: $conffile)!\n"
-    ."Use --conf option \n\tor create ~/.logsaw\n".
-    "\tor set LOGSAWRC environment variable with the corect path."
-)
-    unless ($conffile and -f $conffile);
+usage(    "Couldn't find configuration file (looked for: $conffile)!\n"
+        . "Use --conf option \n\tor create ~/.logsaw\n"
+        . "\tor set LOGSAWRC environment variable with the corect path." )
+    unless ( $conffile and -f $conffile );
 
 # read configuration file
 open CONF, $conffile or die "Can't open $conffile : $!\n";
@@ -438,7 +440,7 @@ EOT
 
 # process log files
 my $reffile_list   = list_dir();
-my $reffilestoread = build_file_list( $reffile_list );
+my $reffilestoread = build_file_list($reffile_list);
 
 if ($debug) {
     print STDERR "Conf: " . Dumper( \%conf );
