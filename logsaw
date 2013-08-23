@@ -425,6 +425,7 @@ usage(    "Couldn't find configuration file (looked for: $conffile)!\n"
 # read configuration file
 open CONF, $conffile or die "Can't open $conffile : $!\n";
 while (<CONF>) {
+    next if /^\s*#/;
     chomp;
     my ( $key, $value ) = split /=/;
     if ( $key eq 'REGEX' ) {
