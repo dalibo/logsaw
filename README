@@ -33,6 +33,12 @@ CONFIGURATION
       rules are perl regular expressions. The configuration file can have as
       many REGEX than rules needed. By default, match all line.
 
+    * NOTREGEX is a rule to match for a line to be ignored in the result. 
+      The rules are perl regular expressions. The configuration file can have 
+      as many REGEX than rules needed. By default, match all lines. If you put 
+      REGEX and NOTREGEX at the time in the configuration, both are applied: a 
+      line has to match a REGEX and not match any NOTREGEX to be displayed.
+
     * PAGER give an arbitrary command to open and read log files if IO::Zlib
       is not available. For instance "zcat -f" or "gzip -dfc".
 

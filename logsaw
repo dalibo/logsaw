@@ -65,7 +65,13 @@ postgresql-8.4-main-[0-9]{4}-[0-9]{2}.log". By default, match all files.
 
 =item * REGEX is a rule to match for a line to be kept in the result. The rules
 are perl regular expressions. The configuration file can have as many REGEX
-than rules needed. By default, match all line.
+than rules needed. By default, match all lines.
+
+=item * NOTREGEX is a rule to match for a line to be ignored in the result. The rules
+are perl regular expressions. The configuration file can have as many REGEX
+than rules needed. By default, match all lines. If you put REGEX and NOTREGEX at the
+time in the configuration, both are applied: a line has to match a REGEX and not match
+any NOTREGEX to be displayed.
 
 =item * PAGER give an arbitrary command to open and read log files if IO::Zlib
 is not available. For instance "zcat -f" or "gzip -dfc".
@@ -135,6 +141,7 @@ my %conf = (    # conf hash
     'LOGFILES'     => '',
     'LOGDIR'       => './',
     'REGEX'        => [],
+    'NOTREGEX'        => [],
     'SHOWFILENAME' => 0,
     'SHOWLINENR'   => 0
 );
@@ -307,11 +314,12 @@ sub build_file_list {
 }
 
 # This function reads all files one by one, from the given offset to the end
-# It writes to stdout the lines matching regexps from the file given as
+# It writes to stdout the lines matching regexps and not maching notregexps from the file given as
 # parameter
 sub read_files {
     my ($reffilelist) = @_;
     my @regexes;
+    my @notregexes;
     my $cksumlastnonemptyfile;
     my $lastfilesizereaded;
     my $lastfilelinenr;
@@ -320,6 +328,10 @@ sub read_files {
     foreach my $str ( @{ $conf{'REGEX'} } ) {
         chomp($str);
         push @regexes, (qr/$str/);
+    }
+    foreach my $str ( @{ $conf{'NOTREGEX'} } ) {
+        chomp($str);
+        push @notregexes, (qr/$str/);
     }
 
     # Read all files
@@ -367,8 +379,18 @@ sub read_files {
             $linenr++;
 
             # Does the line match ?
+            # @regexes cannot be empty (if nothing is specified, a single empty regex is built),
+            # @notregexes can be, so we may not enter its loop at all
             REGEXP: foreach my $regex (@regexes) {
                 if ( $line =~ $regex ) {
+                    # Check that it doesn't also match a notregex
+                    foreach my $notregex (@notregexes)
+                    {
+                        if ($line =~ $notregex)
+                        {
+                            last REGEXP; # Ignore the line
+                        }
+                    }
                     if ($showlinenr) {
                         print "$filename$linenr:$line";
                     }
@@ -431,6 +453,9 @@ while (<CONF>) {
     if ( $key eq 'REGEX' ) {
         push @{ $conf{'REGEX'} }, $value;
     }
+    elsif ($key eq 'NOTREGEX') {
+        push @{ $conf{'NOTREGEX'} }, $value;
+    }
     else {
         $conf{$key} = $value;
     }
@@ -477,6 +502,9 @@ open CONF, ">$conffile" or die "Can't open $conffile : $!\n";
 foreach my $key ( sort keys %conf ) {
     if ( $key eq 'REGEX' ) {
         print CONF "REGEX=$_\n" foreach ( @{ $conf{REGEX} } );
+    }
+    elsif ( $key eq 'NOTREGEX' ) {
+        print CONF "NOTREGEX=$_\n" foreach ( @{ $conf{NOTREGEX} } );
     }
     else {
         print CONF "$key=$conf{$key}\n";
